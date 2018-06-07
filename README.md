@@ -33,6 +33,7 @@ Switch Region on the AWS console, a drag down menu near right-up corner.
 * In usual, we will move it into ~/.ssh/ sub-folder in your home directory.
 * To make it secure, remeber to change the privilege with command 
 ``` chmod 0400 XXXXX.pem ```
+* If you are windows user, and you should download putty.exe and puttygen.exe from [Here](https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html). And also check the document [Here](https://www.ssh.com/ssh/putty/windows/puttygen) if you don't know how to convert .pem to .ppk
 
 ### Step 3:
 * Create your CoudFormation stack: **AWS Console > Cloudformation > Create Stack > from S3 template >
@@ -75,7 +76,8 @@ https://s3-ap-northeast-1.amazonaws.com/workshop-data-public/cloudformation-work
     
 ```
 
-#### 5.1
+#### 5.1 Change the TTL from server response
+* Connect to your EC2 instance through SSH
 * Now we need to create a ttl.php with following content:
 ```
 <?php
@@ -106,7 +108,9 @@ Modify the max-age setting in your source code, and see the behavior change on y
       print "The Current Date and Time is: <br/>";
       print date("g:i:s A l, F j Y.");
 ?>
-* And create another behavior set point to path "/nocache.php", with all the TTL setting to 300, and check with the behavior [http://YOUR_CF_DISTRIBUTION.cloudfront.net/nocache.php] .
+* And create another behavior set path as "/nocache.php", with all the TTL setting to 300, and check with the behavior [http://YOUR_CF_DISTRIBUTION.cloudfront.net/nocache.php] .
+
+After this, please check with the behavior 
 
 For more detail and description, please refer to [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html]
 [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html#ExpirationDownloadDist]
