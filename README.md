@@ -67,8 +67,10 @@ https://s3-ap-northeast-1.amazonaws.com/workshop-data-public/cloudformation-work
 ### Step 5:
 #### Now, We startup play with TTL.
 * Change the MinTTL/DefaultTTL/MaxTTL with different value, and flush the page on your browser, you can see the different behaviors.
+
+* **AWS Console > CloudFront > Your Distribution > Behavior > Default* > Edit**
 * Change the MinTTL=60, DefaultTTL=300, MaxTTL=900, and then refresh the browser, and check the timestemp on the web page.
-* Use curl or browser plug-in (like postman or Modheader in chrome), and play with different headers:
+* In this chapter, we will give you a clear idea about how it work with following cache-control header and cloudfront configurations.
 ```
     Cache-Control: max-age=<seconds>
     Cache-Control: max-stale[=<seconds>]
