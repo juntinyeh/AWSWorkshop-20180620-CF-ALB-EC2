@@ -4,9 +4,9 @@ Startup Workshop Series (2018-06-20) Cloudfront-ApplicationLoadBalancer-EC2
 
 Today we are going to several configuration detail in Amazon CloudFront, which can support us to setup the distribution in front of our web services and application servers. From our last workshop, we already discussed about how to separate the static assets from dynamic content, if you want to review more detail, please check [Here](https://github.com/juntinyeh/AWSWorkshop-20180524-EC2-S3-CF)
 
-![AWS Workshop Series - s3originbehavior](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180524-EC2-S3-CF/master/images/s3originbehavior.png)
+![AWS Workshop Series - cf-default-origin-behavior](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/cf-default-origin-behavior.png)
 
-For this workshop, we support 3 different region: 
+For this workshop, we support following regions: 
 * N. Viginia(us-east-1)
 * N. California(us-west-1)
 * Tokyo(ap-northeast-1)
@@ -15,7 +15,7 @@ For this workshop, we support 3 different region:
 * London(eu-west-2)
 
 We pick these region becase later we will deploy cloudfront distribution, which can obviously see the difference after CDN enabled.
-------
+======
 
 ### Step 1:
 Switch Region on the AWS console, a drag down menu near right-up corner.
@@ -25,6 +25,7 @@ Switch Region on the AWS console, a drag down menu near right-up corner.
 * Sydney(ap-southeast-2) 
 * Frankfurt(eu-central-1)
 * London(eu-west-2)
+------
 
 ### Step 2:
 * Check if you already have a EC2 Key pair in your selected region. 
@@ -34,6 +35,7 @@ Switch Region on the AWS console, a drag down menu near right-up corner.
 * To make it secure, remeber to change the privilege with command 
 ``` chmod 0400 XXXXX.pem ```
 * If you are windows user, and you should download putty.exe and puttygen.exe from [Here](https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html). And also check the document [Here](https://www.ssh.com/ssh/putty/windows/puttygen) if you don't know how to convert .pem to .ppk
+------
 
 ### Step 3:
 * Create your CoudFormation stack: **AWS Console > Cloudformation > Create Stack > from S3 template >
@@ -41,18 +43,26 @@ https://s3-ap-northeast-1.amazonaws.com/workshop-data-public/cloudformation-work
 * Wait till the stack creation ready, the status will change to `CREATE_COMPLETE` (15-20 minutes)
 * you can see the several information in "Resources" and "Output" sheet:
 
+![AWS Workshop Series - stackoutputsheet](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/stackoutputsheet.png)
+![AWS Workshop Series - stackresourcesheet](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/stackresourcesheet.png)
+------
+
 ### Step 4:
 * Check the Web Service output from ALB-
-  Open the Output Sheet, and check the ALBDNSName, you will find a link like 'http://xxxxxxx-ALB.region.amazon.com'
+  Open the Output Sheet, and check the ALBDNSName, you will find a link like 'http://xxxxxxx.region.amazonaws.com'
   Click the link you will see a response page like this:
-  
+
+![AWS Workshop Series - responsefromALB](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/responsefromALB.png)
   Which is the output from you ALB.
+------
   
 * Check the Web Service output from CloudFront- 
-  Open the Output Sheet, and check the CloudFront, you will find a link like 'http://xxxxxxx-ALB.cloudfront.net'
+  Open the Output Sheet, and check the CloudFront, you will find a link like 'http://http://YOUR_CF_DISTRIBUTION.cloudfront.net'
   Click the link you will see a response page like this:
-  
-  Which is the output from you ALB.
+
+![AWS Workshop Series - responsefromCF](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/responsefromCF.png)
+  Which is the output from you ALB goes *through your CloudFront distribution*.
+------
 
 ### Step 5:
 #### Now, We startup play with TTL.
@@ -75,6 +85,7 @@ https://s3-ap-northeast-1.amazonaws.com/workshop-data-public/cloudformation-work
     Cache-Control: must-revalidate
     
 ```
+------
 
 #### 5.1 Change the TTL from server response
 * Connect to your EC2 instance through SSH
@@ -96,6 +107,7 @@ Modify the max-age setting in your source code, and see the behavior change on y
 * Change the code ```header('Cache-Control: max-age=600'); ```
 * Combind with the browser developer tool with 'no-cache' box check.
 * change the Minial-TTL of your origin behavior to 300, and test the behaviors
+------
 
 #### 5.2
 * Now we create another page nocache.php under `/var/www/html/`:
@@ -110,15 +122,20 @@ Modify the max-age setting in your source code, and see the behavior change on y
       print date("g:i:s A l, F j Y.");
 ?>
 ```
-* And create another behavior set path as "/nocache.php", with all the TTL setting to 300, and check with the behavior [http://YOUR_CF_DISTRIBUTION.cloudfront.net/nocache.php] .
+* And create another behavior set path as "/nocache.php"
 
-After this, please check with the behavior 
+![AWS Workshop Series - singleorigintwobehavior](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/singleorigintwobehavior.png)
+
+with all the TTL setting to 300, and check with the behavior [http://YOUR_CF_DISTRIBUTION.cloudfront.net/nocache.php], and check with the different with previous other patterns.
+
+------
 
 For more detail and description, please refer to [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html]
 [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html#ExpirationDownloadDist]
 And also the TTL section in our official document:
 [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-web-values-specify.html#DownloadDistValuesMinTTL]
 And then we can understand the setting combination between server response header and distribution settings.
+------
 
 ### Step 6:
 * Check with the behavior, how do we handle the request header in the requests?
@@ -146,6 +163,7 @@ aws cloudfront create-invalidation --distribution-id "XXXXXXXXXXXX" --paths "/no
 }
 
 ```
+------
 
 ### Step 7:
 #### Call the request with different queryString
@@ -168,22 +186,31 @@ aws cloudfront create-invalidation --distribution-id "XXXXXXXXXXXX" --paths "/no
 ?>
 ```
 * And create another behavior to handle this new pattern:
+![AWS Workshop Series - singleoriginthreebehavior](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/singleoriginthreebehavior.png)
+------
 
 #### 7.1
 * Set the "bgcolor" into the queyrString configuration column:
+![AWS Workshop Series - onequerystring](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/onequerystring.png)
 
   And try with following link [http://YOUR_CF_DISTRIBUTION.cloudfront.net/index.php?bgcolor=red]
   And also with following link [http://YOUR_CF_DISTRIBUTION.cloudfront.net/index.php?bgcolor=red&fgcolor=white]
+------
 
 #### 7.2
 * Now update both querystring into the behavior:
-  In this case you can see how we can control the valid query string filter for your CloudFront distribution.
+![AWS Workshop Series - twoquerystring](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/twoquerystring.png)
+In this case you can see how we can control the valid query string filter for your CloudFront distribution.
   
-From our official document [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/QueryStringParameters.html], you can find that, with different querystring "sequence" it will be treat as different requests. Which means if you had a request `?bgcolor=white&fgcolor=black` cached(hit from cloudfront), but `?fgcolor=black&bgcolor=white` will still goes back to your origin server(miss from cloudfront).
-
+  From our official document [Here](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/QueryStringParameters.html), you can find that, with different querystring "sequence" it will be treat as different requests. Which means if you had a request `?bgcolor=white&fgcolor=black` cached(hit from cloudfront), but `?fgcolor=black&bgcolor=white` will still goes back to your origin server(miss from cloudfront).
+  
+![AWS Workshop Series - missfromcloudfront](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/missfromcloudfront.png)
 As for how to check the cache behavior, please refer to developer tool on your browser.
+------
 
-======
+## Now, your CloudFront distribution setting will looks like:
+![AWS Workshop Series - cf-default-origin-multi-behavior](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/cf-default-origin-multi-behavior.png)
+------
 ## Till here, you already know several detail about setting a CloudFront distribution in front of your dynamic page and API server. 
 ### What's next?
 You might already awared about there is still a easy way to get into your server without HTTPS, right? The ALB Domain is there and the Security Group is still open to public. How should I fix it now? 
