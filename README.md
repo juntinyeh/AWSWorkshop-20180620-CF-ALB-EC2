@@ -78,7 +78,7 @@ https://s3-ap-northeast-1.amazonaws.com/workshop-data-public/cloudformation-work
 
 #### 5.1 Change the TTL from server response
 * Connect to your EC2 instance through SSH
-* Now we need to create a ttl.php with following content:
+* Now we need to create a ttl.php under `/var/www/html/` with following content:
 ```
 <?php
 
@@ -98,7 +98,8 @@ Modify the max-age setting in your source code, and see the behavior change on y
 * change the Minial-TTL of your origin behavior to 300, and test the behaviors
 
 #### 5.2
-* Now we create another page nocache.php:
+* Now we create another page nocache.php under `/var/www/html/`:
+```
 <?php
 
       header('Cache-Control: public, no-cache, no-store, must-revalidate, proxy-revalidate');
@@ -108,6 +109,7 @@ Modify the max-age setting in your source code, and see the behavior change on y
       print "The Current Date and Time is: <br/>";
       print date("g:i:s A l, F j Y.");
 ?>
+```
 * And create another behavior set path as "/nocache.php", with all the TTL setting to 300, and check with the behavior [http://YOUR_CF_DISTRIBUTION.cloudfront.net/nocache.php] .
 
 After this, please check with the behavior 
@@ -146,13 +148,40 @@ aws cloudfront create-invalidation --distribution-id "XXXXXXXXXXXX" --paths "/no
 ```
 
 ### Step 7:
-### Call the request with different queryString
-* Set the "bgcolor" into the queyrString configuration column
+#### Call the request with different queryString
+* This time, we need to create a new page querystring.php under `/var/www/html/`
+```
+<?php
+
+      $bgcolor="#FFFFFF";
+
+      print "<html><body bgcolor='".$_GET['bgcolor']."'>";
+
+      // Print out the current data and time
+    
+      $dt = date("g:i:s A l, F j Y.");
+      print "<font color='".$_GET['fgcolor']."' size='".$_GET['size']."'>";
+      print "The Current Date and Time is: $dt<br/>";
+
+      print "<li> Server received QueryString:   ".$_SERVER['QUERY_STRING'];
+      print "</font></body></html>";
+?>
+```
+* And create another behavior to handle this new pattern:
+
+#### 7.1
+* Set the "bgcolor" into the queyrString configuration column:
+
   And try with following link [http://YOUR_CF_DISTRIBUTION.cloudfront.net/index.php?bgcolor=red]
-  And also with following link [http://YOUR_CF_DISTRIBUTION.cloudfront.net/index.php?bgcolor=red&ftcolor=white]
+  And also with following link [http://YOUR_CF_DISTRIBUTION.cloudfront.net/index.php?bgcolor=red&fgcolor=white]
+
+#### 7.2
+* Now update both querystring into the behavior:
   In this case you can see how we can control the valid query string filter for your CloudFront distribution.
   
-From our official document [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/QueryStringParameters.html], you can find that
+From our official document [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/QueryStringParameters.html], you can find that, with different querystring "sequence" it will be treat as different requests. Which means if you had a request `?bgcolor=white&fgcolor=black` cached(hit from cloudfront), but `?fgcolor=black&bgcolor=white` will still goes back to your origin server(miss from cloudfront).
+
+As for how to check the cache behavior, please refer to developer tool on your browser.
 
 ======
 ## Till here, you already know several detail about setting a CloudFront distribution in front of your dynamic page and API server. 
