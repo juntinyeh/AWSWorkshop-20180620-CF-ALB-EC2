@@ -62,25 +62,90 @@ https://s3-ap-northeast-1.amazonaws.com/workshop-data-public/cloudformation-work
     Cache-Control: max-age=<seconds>
     Cache-Control: max-stale[=<seconds>]
     Cache-Control: min-fresh=<seconds>
+
     Cache-Control: no-cache 
     Cache-Control: no-store
     Cache-Control: no-transform
     Cache-Control: only-if-cached
+    Cache-Control: public
+    Cache-Control: private
+
+    Cache-Control: proxy-revalidate
+    Cache-Control: must-revalidate
+    
 ```
 
+#### 5.1
+* Now we need to create a ttl.php with following content:
+```
+<?php
+
+      header('Cache-Control: max-age=60');
+
+      // Print out the current data and time
+
+      print "The Current Date and Time is: <br/>";
+      print date("g:i:s A l, F j Y.");
+?>
+```
+And please through your browser [http://YOUR_CF_DISTRIBUTION.cloudfront.net/ttl.php] for the observation.
+Modify the max-age setting in your source code, and see the behavior change on your browser. 
+* Change the code ```header('Cache-Control: max-age=10'); ```
+* Change the code ```header('Cache-Control: max-age=600'); ```
+* Combind with the browser developer tool with 'no-cache' box check.
+* change the Minial-TTL of your origin behavior to 300, and test the behaviors
+
+#### 5.2
+* Now we create another page nocache.php:
+<?php
+
+      header('Cache-Control: public, no-cache, no-store, must-revalidate, proxy-revalidate');
+
+      // Print out the current data and time
+
+      print "The Current Date and Time is: <br/>";
+      print date("g:i:s A l, F j Y.");
+?>
+* And create another behavior set point to path "/nocache.php", with all the TTL setting to 300, and check with the behavior [http://YOUR_CF_DISTRIBUTION.cloudfront.net/nocache.php] .
+
 For more detail and description, please refer to [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html]
+[https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html#ExpirationDownloadDist]
 And also the TTL section in our official document:
 [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-web-values-specify.html#DownloadDistValuesMinTTL]
+And then we can understand the setting combination between server response header and distribution settings.
 
 ### Step 6:
 * Check with the behavior, how do we handle the request header in the requests?
 
+```
+aws cloudfront create-invalidation --distribution-id "XXXXXXXXXXXX" --paths "/nocache.php"
+```
+```
+{
+    "Invalidation": {
+        "Status": "InProgress", 
+        "InvalidationBatch": {
+            "Paths": {
+                "Items": [
+                    "/nocache.php"
+                ], 
+                "Quantity": 1
+            }, 
+            "CallerReference": "cli-1234567890-12345678"
+        }, 
+        "Id": "ICV0AYDA406NC", 
+        "CreateTime": "2018-06-07T04:28:01.364Z"
+    }, 
+    "Location": "https://cloudfront.amazonaws.com/2017-03-25/distribution/XXXXXXXXXXX/invalidation/XXXXXXXXXXXX"
+}
+
+```
 
 ### Step 7:
 ### Call the request with different queryString
 * Set the "bgcolor" into the queyrString configuration column
-  And try with following link [http://YOUR_CLOUDFRONT.cloudfront.net/index.php?bgcolor=red]
-  And also with following link [http://YOUR_CLOUDFRONT.cloudfront.net/index.php?bgcolor=red&ftcolor=white]
+  And try with following link [http://YOUR_CF_DISTRIBUTION.cloudfront.net/index.php?bgcolor=red]
+  And also with following link [http://YOUR_CF_DISTRIBUTION.cloudfront.net/index.php?bgcolor=red&ftcolor=white]
   In this case you can see how we can control the valid query string filter for your CloudFront distribution.
   
 From our official document [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/QueryStringParameters.html], you can find that
