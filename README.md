@@ -39,7 +39,7 @@ Switch Region on the AWS console, a drag down menu near right-up corner.
 
 ### Step 3:
 * Create your CoudFormation stack: **AWS Console > Cloudformation > Create Stack > from S3 template >
-https://s3-ap-northeast-1.amazonaws.com/workshop-data-public/cloudformation-workshop-20180524-ec2-s3.json**
+https://s3-ap-northeast-1.amazonaws.com/workshop-data-public/cloudformation-workshop-20180620-ec2-alb-s3-cf.json**
 * Wait till the stack creation ready, the status will change to `CREATE_COMPLETE` (15-20 minutes)
 * you can see the several information in "Resources" and "Output" sheet:
 
