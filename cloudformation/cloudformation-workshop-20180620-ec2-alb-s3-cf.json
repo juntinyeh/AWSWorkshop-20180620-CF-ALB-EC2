@@ -1,0 +1,520 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "AWS Woskshop CloudFormation Template, CloudFront-ALB-TargetGroup-EC2 stack set.",
+  "Parameters" : {
+    "ProjectId" : {
+      "Description" : "Input a ProjectId",
+      "Type" : "String",
+      "MinLength" : 4,
+      "MaxLength" : 16,
+      "AllowedPattern" : "^[a-zA-Z0-9]*$"
+    },
+    "VPC" : {
+      "Description" : "Applied VPC",
+      "Type" : "AWS::EC2::VPC::Id"
+    },
+    "Subnets" : {
+      "Description" : "Applied Subnet",
+      "Type" : "List<AWS::EC2::Subnet::Id>"
+    },
+    "KeyName" : {
+      "Description" : "EC2 Instance SSH Key",
+      "Type" : "AWS::EC2::KeyPair::KeyName"
+    },
+    "InstanceType" : {
+      "Description" : "EC2 instance specs configuration",
+      "Type" : "String",
+      "Default" : "t2.micro",
+      "AllowedValues" : ["t2.micro"]
+    }
+  },
+  "Mappings" : {
+    "AMIs" : {
+      "us-east-1" : {
+        "Name" : "ami-14c5486b"
+      },
+      "us-west-1" : {
+        "Name" : "ami-25110f45"
+      },
+      "ap-northeast-1" : {
+        "Name" : "ami-8fbab2f3"
+      },
+      "ap-southeast-2" : {
+        "Name" : "ami-60a26a02"
+      },
+      "eu-central-1" : {
+        "Name" : "ami-9a91b371"
+      },
+      "eu-west-2" : {
+        "Name" : "ami-c12dcda6"
+      }
+    }
+  },
+  "Resources" : {
+    "MyWebEC2" : {
+      "Type" : "AWS::EC2::Instance",
+      "Metadata" : {
+        "Comment1" : "Configure the bootstrap helpers to install the Apache Web Server and PHP",
+        "Comment2" : "Save website content to /var/www/html/index.php",
+        "AWS::CloudFormation::Init" : {
+          "configSets" : {
+            "Install" : [ "Install" ]
+          },
+          "Install" : {
+            "packages" : {
+              "yum" : {
+                "httpd"        : [],
+                "php"          : []
+              }
+            },
+            "files" : {
+              "/var/www/html/index.php" : {
+                "content" : { "Fn::Join" : [ "", [
+                  "<html>\n",
+                  "  <head>\n",
+                  "    <title>AWS CloudFormation PHP Sample</title>\n",
+                  "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=ISO-8859-1\">\n",
+                  "  </head>\n",
+                  "  <body>\n",
+                  "    <h1>Welcome to the AWS CloudFormation PHP Sample</h1>\n",
+                  "    <p/>\n",
+                  "    <?php\n",
+                  "      // Print out the current data and time\n",
+                  "      print \"The Current Date and Time is: <br/>\";\n",
+                  "      print date(\"g:i A l, F j Y.\");\n",
+                  "    ?>\n",
+                  "    <p/>\n",
+                  "    <?php\n",
+                  "      // Setup a handle for CURL\n",
+                  "      $curl_handle=curl_init();\n",
+                  "      curl_setopt($curl_handle,CURLOPT_CONNECTTIMEOUT,2);\n",
+                  "      curl_setopt($curl_handle,CURLOPT_RETURNTRANSFER,1);\n",
+                  "      // Get the hostname of the instance from the instance metadata\n",
+                  "      curl_setopt($curl_handle,CURLOPT_URL,'http://169.254.169.254/latest/meta-data/public-hostname');\n",
+                  "      $hostname = curl_exec($curl_handle);\n",
+                  "      if (empty($hostname))\n",
+                  "      {\n",
+                  "        print \"Sorry, for some reason, we got no hostname back <br />\";\n",
+                  "      }\n",
+                  "      else\n",
+                  "      {\n",
+                  "        print \"Server = \" . $hostname . \"<br />\";\n",
+                  "      }\n",
+                  "      // Get the instance-id of the instance from the instance metadata\n",
+                  "      curl_setopt($curl_handle,CURLOPT_URL,'http://169.254.169.254/latest/meta-data/instance-id');\n",
+                  "      $instanceid = curl_exec($curl_handle);\n",
+                  "      if (empty($instanceid))\n",
+                  "      {\n",
+                  "        print \"Sorry, for some reason, we got no instance id back <br />\";\n",
+                  "      }\n",
+                  "      else\n",
+                  "      {\n",
+                  "        print \"EC2 instance-id = \" . $instanceid . \"<br />\";\n",
+                  "      }\n",
+                  "    ?>\n",
+                  "    <h2>Request Information</h2>\n",
+                  "    <p/>\n",
+                  "    <?php\n",
+                  "    foreach (getallheaders() as $name => $value) { echo \"<li>Headers['\".$name.\"']: $value\n\";} \n",
+                  "    ?>\n",
+                  "  </body>\n",
+                  "</html>\n"
+                ]]},
+                "mode"  : "000600",
+                "owner" : "apache",
+                "group" : "apache"
+              }
+            },
+            "services" : {
+              "sysvinit" : {  
+                "httpd"   : { "enabled" : "true", "ensureRunning" : "true" }
+              }
+            }
+          }
+        }
+      },
+      "Properties" : {
+        "InstanceType" : {
+          "Ref" : "InstanceType"
+        },
+        "ImageId" : {
+          "Fn::FindInMap" : [
+            "AMIs",
+            {
+              "Ref" : "AWS::Region"
+            },
+            "Name"
+          ]
+        },
+        "KeyName" : {
+          "Ref" : "KeyName"
+        },
+        "IamInstanceProfile" : {
+          "Ref" : "ListS3BucketsInstanceProfile"
+        },
+        "SecurityGroupIds" : [
+          {
+            "Ref" : "SSHAccessSG"
+          },
+          {
+            "Ref" : "EC2IntHTTPAccessSG"
+          }
+        ],
+        "Tags" : [
+          {
+            "Key" : "Name",
+            "Value" : "Workshop-180620-EC2"
+          },
+          {
+            "Key" : "Purpose",
+            "Value" : "Workshop"
+          }
+        ],
+        "UserData" : {
+          "Fn::Base64" : { 
+            "Fn::Join" : ["", [
+              "#!/bin/bash -xe\n",
+              "yum install -y aws-cfn-bootstrap\n",
+              "# Install the files and packages from the metadata\n",
+              "/opt/aws/bin/cfn-init -v ",
+              "         --stack ", { "Ref" : "AWS::StackName" },
+              "         --resource MyWebEC2 ",
+              "         --configsets Install ",
+              "         --region ", { "Ref" : "AWS::Region" }, "\n"
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "SSHAccessSG" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Allow SSH access from anywhere",
+        "SecurityGroupIngress" : [
+          {
+            "FromPort" : "22",
+            "ToPort" : "22",
+            "IpProtocol" : "tcp",
+            "CidrIp" : "0.0.0.0/0"
+          }
+        ],
+        "Tags" : [
+          {
+            "Key" : "Name",
+            "Value" : "SSHAccessSG"
+          },
+          {
+            "Key" : "Purpose",
+            "Value" : "Workshop"
+          }
+        ]
+      }
+    },
+    "ALBExtHTTPAccessSG" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Allow HTTP/HTTPS access from anywhere",
+        "SecurityGroupIngress" : [
+          {
+            "FromPort" : "80",
+            "ToPort" : "80",
+            "IpProtocol" : "tcp",
+            "CidrIp" : "0.0.0.0/0"
+          }
+        ],
+        "Tags" : [
+          {
+            "Key" : "Name",
+            "Value" : "ALBExtHTTPAccessSG"
+          },
+          {
+            "Key" : "Purpose",
+            "Value" : "Workshop"
+          }
+        ]
+      }
+    },
+    "EC2IntHTTPAccessSG" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Allow HTTP access from ALB",
+        "SecurityGroupIngress" : [
+          {
+            "FromPort" : "80",
+            "ToPort" : "80",
+            "IpProtocol" : "tcp",
+            "SourceSecurityGroupName" : { "Ref" : "ALBExtHTTPAccessSG" }
+          }
+        ],
+        "Tags" : [
+          {
+            "Key" : "Name",
+            "Value" : "EC2IntHTTPAccessSG"
+          },
+          {
+            "Key" : "Purpose",
+            "Value" : "Workshop"
+          }
+        ]
+      }
+    },
+    "TempS3" : {
+      "Type" : "AWS::S3::Bucket", 
+      "Properties" : {
+        "Tags" : [ {
+            "Key" : "Name",
+            "Value" : "SSHAccessSG"
+          },
+          {
+            "Key" : "Purpose",
+            "Value" : "Workshop"
+          }]
+      }
+    },
+    "MyALB" : {
+      "Type" : "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties" : {    
+        "Scheme" : "internet-facing",
+        "Subnets" : { "Ref" : "Subnets"}  ,
+        "SecurityGroups" : [ { "Fn::GetAtt" : [ "ALBExtHTTPAccessSG" , "GroupId" ] } ],
+        "Tags" : [  
+          {
+            "Key" : "Name",
+            "Value" : "MyWorkshop-ALB-20180620"
+          },
+          {
+            "Key" : "Purpose",
+            "Value" : "Workshop"
+          }
+        ],
+        "Type" : "application",
+        "IpAddressType" : "ipv4"
+      }
+    },
+    "MyTargetGroup" : {
+      "Type" : "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties" : {
+        "HealthCheckIntervalSeconds" : 30,
+        "HealthCheckPath" : "/",
+        "HealthCheckPort" : "80",
+        "HealthCheckProtocol" : "HTTP",
+        "HealthCheckTimeoutSeconds" : 10,
+        "HealthyThresholdCount" : 2,
+        "Port" : 80,
+        "Protocol" : "HTTP",
+        "Tags" : [
+          {
+            "Key" : "Name",
+            "Value" : "MyWorkshop-TG-20180620"
+          },
+          {
+            "Key" : "Purpose",
+            "Value" : "Workshop"
+          }
+        ],
+        "Targets" : [ {
+          "Id" : { "Ref" : "MyWebEC2" },
+          "Port" : 80
+        } ],
+        "TargetType" : "instance",
+        "UnhealthyThresholdCount" : 6,
+        "VpcId" : { "Ref" : "VPC" }
+      }
+    },
+    "MyALBListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "DefaultActions": [{
+          "Type": "forward",
+          "TargetGroupArn": { "Ref": "MyTargetGroup" }
+        }],
+        "LoadBalancerArn": { "Ref": "MyALB" },
+        "Port": "80",
+        "Protocol": "HTTP"
+      }
+    },
+    "MyCloudFrontDist": {
+       "Type" : "AWS::CloudFront::Distribution",
+       "Properties" : {
+          "DistributionConfig" : { 
+            "Comment" : "Workshop-180620-CloudFrontConfig",
+            "DefaultCacheBehavior" : {
+              "AllowedMethods" : ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"],
+              "CachedMethods" : ["GET", "HEAD", "OPTIONS"],
+              "Compress" : true,
+              "DefaultTTL" : 0,
+              "ForwardedValues" : {
+                "QueryString" : false,
+              },
+              "MaxTTL" : 0,
+              "MinTTL" : 0,
+              "SmoothStreaming" : false,
+              "TargetOriginId" : "MyCloudFrontOrigin-Default",
+              "ViewerProtocolPolicy" : "allow-all"
+            },
+            "Enabled" : true,
+            "HttpVersion" : "http1.1",
+            "IPV6Enabled" : true,
+            "Origins" : [ 
+              {
+                "DomainName" : { "Fn::GetAtt" : [ "MyALB", "DNSName" ] },
+                "Id" : "MyCloudFrontOrigin-Default",
+                "CustomOriginConfig" : {
+                  "HTTPPort" : 80,
+                  "OriginProtocolPolicy" : "match-viewer",
+                }
+              } 
+            ],
+            "PriceClass" : "PriceClass_All"
+          },
+          "Tags" : [ 
+            {
+              "Key" : "Name",
+              "Value" : "Workshop-180620-CloudFront"
+            },
+            {
+              "Key" : "Purpose",
+              "Value" : "Workshop"
+            }
+          ]
+       }
+    }, 
+    "ListS3BucketsInstanceProfile" : {
+      "Type" : "AWS::IAM::InstanceProfile",
+      "Properties" : {
+        "Path" : "/",
+        "Roles" : [
+          {
+            "Ref" : "ListS3BucketsRole"
+          }
+        ]
+      }
+    },
+    "ListS3BucketsPolicy" : {
+      "Type" : "AWS::IAM::Policy",
+      "Properties" : {
+        "PolicyName" : "ListS3BucketsPolicy",
+        "PolicyDocument" : {
+          "Statement" : [
+            {
+              "Effect" : "Allow",
+              "Action" : [
+                "s3:*"
+              ],
+              "Resource" : [  { "Fn::GetAtt" : [ "TempS3" , "Arn" ] } ,
+                {"Fn::Join" : [ "" , [ { "Fn::GetAtt" : [ "TempS3" , "Arn" ] } , "/*" ] ]}
+              ]
+            },
+            {
+              "Effect" : "Allow",
+              "Action" : [
+                "s3:ListBuckets"
+              ],
+              "Resource" : "arn:aws:s3:::*"
+            }
+          ]
+        },
+        "Roles" : [
+          {
+            "Ref" : "ListS3BucketsRole"
+          }
+        ]
+      }
+    },
+    "CreateCFInvalidationPolicy" : {
+      "Type" : "AWS::IAM::Policy",
+      "Properties" : {
+        "PolicyName" : "CreateCFInvalidationPolicy",
+        "PolicyDocument" : {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": "cloudfront:CreateInvalidation",
+              "Resource": "*"
+            }
+          ]
+        },
+        "Roles" : [
+          {
+            "Ref" : "ListS3BucketsRole"
+          }
+        ]
+      }
+    },
+    "ListS3BucketsRole" : {
+      "Type" : "AWS::IAM::Role",
+      "Properties" : {
+        "AssumeRolePolicyDocument": {
+          "Version" : "2012-10-17",
+          "Statement" : [
+            {
+              "Effect" : "Allow",
+              "Principal" : {
+                "Service" : ["ec2.amazonaws.com"]
+              },
+              "Action" : [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path" : "/"
+      }
+    }
+  },
+  "Outputs" : {
+    "EC2" : {
+      "Description" : "EC2 IP address",
+      "Value" : {
+        "Fn::GetAtt" : [ "MyWebEC2", "PublicIp" ]
+      }
+    },
+    "SSH" : {
+      "Description" : "Connect to EC2 through SSH",
+      "Value" : {
+        "Fn::Join" : [
+          "",
+          [
+            "ssh ec2-user@",
+            {
+              "Fn::GetAtt" : [
+                "MyWebEC2",
+                "PublicIp"
+              ]
+            },
+            " -i ",
+            {
+              "Ref" : "KeyName"
+            },
+            ".pem"
+          ]
+        ]
+      }
+    },
+    "ALBDNSName" : {
+      "Description" : "Application LoadBalancer Link",
+      "Value" : {
+        "Fn::Join" : [
+          "",
+          [ 
+            "http://",
+            { "Fn::GetAtt" : [ "MyALB", "DNSName" ] }
+          ]
+        ]
+      }
+    },
+    "CloudFront" : {
+      "Description" : "CloudFront Distribution Link",
+      "Value" : {
+        "Fn::Join" : [
+          "",
+          [ 
+            "http://",
+            { "Fn::GetAtt" : [ "MyCloudFrontDist", "DomainName" ] }
+          ]
+        ]
+      }
+    }
+  }
+}
