@@ -14,9 +14,7 @@ For this workshop, we support following regions:
 * Frankfurt(eu-central-1)
 * London(eu-west-2)
 
-We pick these region becase later we will deploy cloudfront distribution, which can obviously see the difference after CDN enabled.
-======
-
+------
 ### Step 1:
 Switch Region on the AWS console, a drag down menu near right-up corner.
 * N. Viginia(us-east-1)
@@ -38,9 +36,9 @@ Switch Region on the AWS console, a drag down menu near right-up corner.
 ------
 
 ### Step 3:
-* Create your CoudFormation stack: **AWS Console > Cloudformation > Create Stack > from S3 template >
+* Create your CoudFormation stack for this workshop: **AWS Console > Cloudformation > Create Stack > from S3 template >
 https://s3-ap-northeast-1.amazonaws.com/workshop-data-public/cloudformation-workshop-20180620-ec2-alb-s3-cf.json**
-* Wait till the stack creation ready, the status will change to `CREATE_COMPLETE` (15-20 minutes)
+* Wait till the stack creation ready, the status will change to `CREATE_COMPLETE` (20-25 minutes)
 * you can see the several information in "Resources" and "Output" sheet:
 
 ![AWS Workshop Series - stackoutputsheet](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/stackoutputsheet.png)
@@ -54,6 +52,7 @@ https://s3-ap-northeast-1.amazonaws.com/workshop-data-public/cloudformation-work
 
 ![AWS Workshop Series - responsefromALB](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/responsefromALB.png)
   Which is the output from you ALB.
+  
 ------
   
 * Check the Web Service output from CloudFront- 
@@ -62,6 +61,11 @@ https://s3-ap-northeast-1.amazonaws.com/workshop-data-public/cloudformation-work
 
 ![AWS Workshop Series - responsefromCF](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/responsefromCF.png)
   Which is the output from you ALB goes *through your CloudFront distribution*.
+  
+* But wait, where was those missing headers? Where was those real-users' request information and headers?
+ - What you see on the page, is the request sent *from CloudFront to your Origin*
+ - What you sent to *CloudFront* can be logged if you turned on the access log in your distribution.
+  
 ------
 
 ### Step 5:
@@ -73,7 +77,7 @@ https://s3-ap-northeast-1.amazonaws.com/workshop-data-public/cloudformation-work
 * In this chapter, we will give you a clear idea about how it work with following cache-control header and cloudfront configurations.
 ```
     Cache-Control: max-age=<seconds>
-    Cache-Control: max-stale[=<seconds>]
+    Cache-Control: max-stale=<seconds>
     Cache-Control: min-fresh=<seconds>
 
     Cache-Control: no-cache 
@@ -108,7 +112,7 @@ Modify the max-age setting in your source code, and see the behavior change on y
 * Change the code ```header('Cache-Control: max-age=10'); ```
 * Change the code ```header('Cache-Control: max-age=600'); ```
 * Combind with the browser developer tool with 'no-cache' box check.
-* change the Minial-TTL of your origin behavior to 300, and test the behaviors
+* change the Minial-TTL in your origin behavior to 300, and test the page response behavior on your browser.
 ------
 
 #### 5.2
@@ -128,20 +132,26 @@ Modify the max-age setting in your source code, and see the behavior change on y
 
 ![AWS Workshop Series - singleorigintwobehavior](https://raw.githubusercontent.com/juntinyeh/AWSWorkshop-20180620-CF-ALB-EC2/master/images/singleorigintwobehavior.png)
 
-with all the TTL setting to 300, and check with the behavior [http://YOUR_CF_DISTRIBUTION.cloudfront.net/nocache.php], and check with the different with previous other patterns.
+with all the TTL setting to 300, and check with the behavior [http://YOUR_CF_DISTRIBUTION.cloudfront.net/nocache.php], and check with the different with previous pattern.
 
 ------
 
 For more detail and description, please refer to [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html]
+
 [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html#ExpirationDownloadDist]
 And also the TTL section in our official document:
 [https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-web-values-specify.html#DownloadDistValuesMinTTL]
-And then we can understand the setting combination between server response header and distribution settings.
+
+Now we have basic idea about server response through control header and distribution settings.
+
 ------
 
 ### Step 6:
-* Check with the behavior, how do we handle the request header in the requests?
-
+* What do I do if I want to shorten the TTL setting in my pattern configuration? I just set the MinTTL=300, and the page has already been cached! 
+* Check with the document: [Invalidating Objects](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html)
+ - You updated the content in your static content page
+ - You overwrited some static assets, like image or logo
+ - You set the page refresh/cache TTL as 24 hours, but you found a typo need to fix it now......
 ```
 aws cloudfront create-invalidation --distribution-id "XXXXXXXXXXXX" --paths "/nocache.php"
 ```
@@ -169,6 +179,9 @@ aws cloudfront create-invalidation --distribution-id "XXXXXXXXXXXX" --paths "/no
 
 ### Step 7:
 #### Call the request with different queryString
+* Sometimes, the version update was too much complicated if I need to invalidate the page every time. Maybe I can create the page working with database or dynamic query? with parameters input?
+ - /dailynewspage?`Y=Year`&`m=Month`&`d=Date`
+ - /packagerelease?`version=latest`
 * This time, we need to create a new page querystring.php under `/var/www/html/`
 ```
 <?php
